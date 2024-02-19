@@ -1,0 +1,65 @@
+!pip install gtts
+!pip install modelscope==1.4.2
+!pip install open_clip_torch
+!pip install pytorch-lightning
+!pip install gtts
+!pip install moviepy
+from gtts import gTTS
+
+# Get input text from the user
+text = input("Enter the text you want to convert to speech: ")
+
+# Specify the language (optional)
+language = 'en'
+
+# Create a gTTS object
+tts = gTTS(text=text, lang=language, slow=False)
+
+# Save the speech as an MP3 file
+file_name = input("Enter the file name (without extension): ") + ".mp3"
+tts.save(file_name)
+
+print(f"Speech saved as {file_name}")
+from google.colab import files
+
+
+from huggingface_hub import snapshot_download
+
+from modelscope.pipelines import pipeline
+from modelscope.outputs import OutputKeys
+import pathlib
+
+from google.colab import files
+
+model_dir = pathlib.Path('weights')
+snapshot_download('damo-vilab/modelscope-damo-text-to-video-synthesis',
+                   repo_type='model', local_dir=model_dir)
+
+pipe = pipeline('text-to-video-synthesis', model_dir.as_posix())
+user_input_text = text
+test_text = {'text': user_input_text,}
+output_video_path = pipe(test_text,)[OutputKeys.OUTPUT_VIDEO]
+# print(output_video_path)
+from moviepy.editor import *
+
+# Load the video file
+video_path = output_video_path
+video = VideoFileClip(video_path)
+
+# Load the audio file
+audio_path = file_name + ".mp3"
+audio = AudioFileClip(audio_path)
+
+# Set the audio duration to match the video duration
+audio = audio.set_duration(video.duration)
+
+# Combine the video with the audio
+final_clip = video.set_audio(audio)
+
+# Specify the output file path
+output_path = "output_video.mp4"
+
+# Write the final video with merged audio
+final_clip.write_videofile(output_path, codec="libx264", audio_codec="aac", temp_audiofile="temp-audio.m4a", remove_temp=True)
+
+files.download(output_path)
